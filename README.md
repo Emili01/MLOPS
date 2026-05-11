@@ -1,1 +1,1 @@
-# MLOPS
+Arquitectura integral de MLOps simulada en LocalStack. Implementa un flujo completo de ingeniería de datos y machine learning utilizando AWS Glue, S3 y SageMaker. El proyecto automatiza la ingesta (Bronze/Silver), el entrenamiento de modelos y el monitoreo de drift mediante validación por ventanas temporales.
