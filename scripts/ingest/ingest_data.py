@@ -4,41 +4,31 @@ from io import StringIO
 from datetime import datetime
 import os
 
-# Configuración desde variables de entorno o defaults
 ENDPOINT_URL = os.getenv('LOCALSTACK_ENDPOINT', 'http://localhost:4566')
 BUCKET = os.getenv('S3_BUCKET', 'proyecto-ml-datalake')
 
-s3 = boto3.client(
-    's3',
-    endpoint_url=ENDPOINT_URL,
-    aws_access_key_id='test',
-    aws_secret_access_key='test',
-    region_name='us-east-1'
-)
+s3 = boto3.client('s3', endpoint_url=ENDPOINT_URL,
+                  aws_access_key_id='test',
+                  aws_secret_access_key='test')
 
-# Cargar datos de ejemplo o crear si no existe
-csv_path = '../datasets/sample_data.csv'
-if os.path.exists(csv_path):
-    df = pd.read_csv(csv_path)
-else:
-    # Datos de ejemplo
-    df = pd.DataFrame({
-        'feature1': [1.2, 2.3, 3.1, 4.5, 5.0],
-        'feature2': [0.5, 1.5, 2.5, 3.5, 4.5],
-        'target': [0, 1, 0, 1, 1]
-    })
-    os.makedirs('../datasets', exist_ok=True)
-    df.to_csv(csv_path, index=False)
+dataset_path = '../../datasets/creditcard.csv'
+if not os.path.exists(dataset_path):
+    print("❌ No se encuentra creditcard.csv en datasets/")
+    print("Descárgalo primero: python scripts/eda/download_dataset.py")
+    exit(1)
 
-# Guardar en Bronze layer
+print(" Cargando dataset Credit Card Fraud Detection...")
+df = pd.read_csv(dataset_path)
+print(f"   {df.shape[0]:,} transacciones cargadas")
+
+# Subir a Bronze layer (raw)
 timestamp = datetime.now().strftime('%Y%m%d_%H%M%S')
+key = f'raw/creditcard_{timestamp}.csv'
+
 csv_buffer = StringIO()
 df.to_csv(csv_buffer, index=False)
 
-s3.put_object(
-    Bucket=BUCKET,
-    Key=f'raw/training_data_{timestamp}.csv',
-    Body=csv_buffer.getvalue()
-)
+s3.put_object(Bucket=BUCKET, Key=key, Body=csv_buffer.getvalue())
 
-print(f"✅ Datos guardados en: raw/training_data_{timestamp}.csv")
+print(f"✅ Datos guardados en: s3://{BUCKET}/{key}")
+print(f"{len(df):,} filas | {len(df.columns)} columnas")
