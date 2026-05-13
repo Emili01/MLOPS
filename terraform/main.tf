@@ -23,5 +23,8 @@ provider "aws" {
     lambda     = "http://localhost:4566"
     sagemaker  = "http://localhost:4566"
     cloudwatch = "http://localhost:4566"
+    sns        = "http://localhost:4566"
+    sqs        = "http://localhost:4566"
+    stepfunctions  = "http://localhost:4566"
   }
 }
