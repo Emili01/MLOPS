@@ -4,10 +4,15 @@ from datetime import datetime
 import json
 import os
 import boto3
-from io import StringIO
 
 ENDPOINT = os.getenv('LOCALSTACK_ENDPOINT', 'http://localhost:4566')
 BUCKET = os.getenv('S3_BUCKET', 'proyecto-ml-datalake')
+
+SCRIPT_DIR = os.path.dirname(os.path.abspath(__file__))
+PROJECT_ROOT = os.path.dirname(os.path.dirname(SCRIPT_DIR))
+DATASET_PATH = os.path.join(PROJECT_ROOT, 'datasets', 'creditcard.csv')
+
+
 
 s3 = boto3.client('s3', endpoint_url=ENDPOINT, 
                   aws_access_key_id='test', 
@@ -15,8 +20,8 @@ s3 = boto3.client('s3', endpoint_url=ENDPOINT,
 
 def load_data():
     """Cargar dataset desde datasets/"""
-    df = pd.read_csv('../../datasets/creditcard.csv')
-    print(f"Dataset cargado: {df.shape[0]:,} filas, {df.shape[1]} columnas")
+    df = pd.read_csv(DATASET_PATH)
+    print(f" Dataset cargado: {df.shape[0]:,} filas, {df.shape[1]} columnas")
     return df
 
 def analyze_nulls(df):
@@ -37,7 +42,7 @@ def detect_outliers(df, method='iqr'):
     numeric_cols = df.select_dtypes(include=[np.number]).columns
     
     for col in numeric_cols:
-        if col != 'Class': 
+        if col != 'Class':  # No analizar la variable target
             Q1 = df[col].quantile(0.25)
             Q3 = df[col].quantile(0.75)
             IQR = Q3 - Q1
@@ -122,14 +127,14 @@ def print_summary(report):
     
     print(f"\n Dimensiones: {report['dataset_shape']['rows']:,} filas × {report['dataset_shape']['columns']} columnas")
     
-    print("\n🔍 Valores Nulos:")
+    print("\n Valores Nulos:")
     if isinstance(report['null_analysis'], str):
         print(f"  {report['null_analysis']}")
     else:
         for item in report['null_analysis']:
             print(f"  {item['column']}: {item['null_count']:,} ({item['null_percentage']:.2f}%)")
     
-    print(f"\n⚖️  Distribución de Clases:")
+    print(f"\n  Distribución de Clases:")
     print(f"  Genuinas: {report['class_distribution']['genuine']:,}")
     print(f"  Fraudes:  {report['class_distribution']['fraud']:,}")
     print(f"  % Fraude: {report['class_distribution']['fraud_percentage']:.4f}%")
@@ -146,17 +151,14 @@ def print_summary(report):
     print("="*60)
 
 def main():
-    print("Iniciando Data Profiling...")
-    
-    df = load_data()
-    
+    print(" Iniciando Data Profiling...")
+
+    df = load_data()    
     report, timestamp = generate_report(df)
-    
     print_summary(report)
-    
     save_report(report, timestamp)
     
-    print(f"\nData Profiling completado")
+    print(f"\n✅ Data Profiling completado")
 
 if __name__ == "__main__":
     main()
