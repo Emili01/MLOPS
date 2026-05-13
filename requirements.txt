@@ -1,0 +1,11 @@
+# Core
+boto3>=1.34.0
+pandas>=2.0.0
+numpy>=1.24.0
+awscli-local>=0.18.0
+
+# PySpark (CRÍTICO)
+pyspark==3.5.3
+
+# Herramientas adicionales
+python-dotenv>=1.0.0
