@@ -6,8 +6,9 @@ output "glue_database_name" {
   value = aws_glue_catalog_database.ml_analytics.name
 }
 
+# Reemplaza el bloque de s3_endpoint con esto:
 output "s3_endpoint" {
-  value = "http://localhost:4566"
+  value = "s3://${aws_s3_bucket.datalake.id}"
 }
 
 output "sagemaker_endpoint_name" {

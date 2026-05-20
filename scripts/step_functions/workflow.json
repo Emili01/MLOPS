@@ -1,5 +1,5 @@
 {
-  "Comment": "Pipeline Completo de Detección de Fraude (Fase A + Fase B)",
+  "Comment": "Pipeline AWS Nativo: Detección de Fraude (Glue + SageMaker)",
   "StartAt": "GlueDataPreparation",
   "States": {
     "GlueDataPreparation": {
@@ -8,23 +8,18 @@
       "Parameters": {
         "JobName": "${glue_job_name}"
       },
-      "Next": "SageMakerModelTraining",
-      "Catch": [
-        {
-          "ErrorEquals": ["States.ALL"],
-          "Next": "PipelineFailed"
-        }
-      ]
+      "Next": "SageMakerModelTraining"
     },
     "SageMakerModelTraining": {
       "Type": "Task",
-      "Resource": "arn:aws:states:::aws-sdk:sagemaker:createTrainingJob",
+      "Resource": "arn:aws:states:::sagemaker:createTrainingJob.sync",
       "Parameters": {
         "TrainingJobName.$": "States.Format('hybrid-train-{}', States.UUID())",
         "AlgorithmSpecification": {
           "TrainingImage": "763104351884.dkr.ecr.us-east-1.amazonaws.com/pytorch-training:2.0.0-cpu-py310",
           "TrainingInputMode": "File"
         },
+        "RoleArn": "${sagemaker_role}",
         "InputDataConfig": [
           {
             "ChannelName": "train",
@@ -32,6 +27,16 @@
               "S3DataSource": {
                 "S3DataType": "S3Prefix",
                 "S3Uri": "s3://${curated_bucket}/silver/",
+                "S3DataDistributionType": "FullyReplicated"
+              }
+            }
+          },
+          {
+            "ChannelName": "code",
+            "DataSource": {
+              "S3DataSource": {
+                "S3DataType": "S3Prefix",
+                "S3Uri": "s3://${curated_bucket}/scripts/sagemaker/",
                 "S3DataDistributionType": "FullyReplicated"
               }
             }
@@ -45,27 +50,84 @@
           "InstanceCount": 1,
           "VolumeSizeInGB": 10
         },
-        "RoleArn": "${sagemaker_role}",
         "StoppingCondition": {
           "MaxRuntimeInSeconds": 3600
         },
-        "Environment": {
-          "SAGEMAKER_PROGRAM": "train_hybrid.py",
-          "SAGEMAKER_SUBMIT_DIRECTORY": "s3://${curated_bucket}/scripts/sourcedir.tar.gz"
+        "HyperParameters": {
+          "sagemaker_program": "train_hybrid.py",
+          "sagemaker_submit_directory": "/opt/ml/input/data/code"
         }
       },
-      "End": true,
-      "Catch": [
-        {
-          "ErrorEquals": ["States.ALL"],
-          "Next": "PipelineFailed"
-        }
-      ]
+      "ResultPath": "$.TrainingResult",
+      "Next": "RepackageModel"
     },
-    "PipelineFailed": {
-      "Type": "Fail",
-      "Cause": "Error en el Pipeline de MLOps",
-      "Error": "JobFailed"
+    "RepackageModel": {
+      "Type": "Task",
+      "Resource": "arn:aws:states:::lambda:invoke",
+      "Parameters": {
+        "FunctionName": "${repackage_lambda_arn}",
+        "Payload": {
+          "model_s3_uri.$": "$.TrainingResult.ModelArtifacts.S3ModelArtifacts"
+        }
+      },
+      "ResultSelector": {
+        "fixed_model_uri.$": "$.Payload.fixed_model_uri"
+      },
+      "ResultPath": "$.RepackageResult",
+      "Next": "SageMakerCreateModel"
+    },
+    "SageMakerCreateModel": {
+      "Type": "Task",
+      "Resource": "arn:aws:states:::sagemaker:createModel",
+      "Parameters": {
+        "ModelName.$": "States.Format('fraud-model-{}', States.UUID())",
+        "PrimaryContainer": {
+          "Image": "763104351884.dkr.ecr.us-east-1.amazonaws.com/pytorch-inference:2.0.0-cpu-py310",
+          "ModelDataUrl.$": "$.RepackageResult.fixed_model_uri",
+          "Environment": {
+            "SAGEMAKER_PROGRAM": "inference.py",
+            "SAGEMAKER_SUBMIT_DIRECTORY": "/opt/ml/model"
+          }
+        },
+        "ExecutionRoleArn": "${sagemaker_role}"
+      },
+      "ResultPath": "$.ModelResult",
+      "Next": "ExtractModelName"
+    },
+    "ExtractModelName": {
+      "Type": "Pass",
+      "Parameters": {
+        "ModelName.$": "States.ArrayGetItem(States.StringSplit($.ModelResult.ModelArn, '/'), 1)"
+      },
+      "ResultPath": "$.ExtractedModel",
+      "Next": "SageMakerCreateEndpointConfig"
+    },
+    "SageMakerCreateEndpointConfig": {
+      "Type": "Task",
+      "Resource": "arn:aws:states:::sagemaker:createEndpointConfig",
+      "Parameters": {
+        "EndpointConfigName.$": "States.Format('fraud-config-{}', States.UUID())",
+        "ProductionVariants": [
+          {
+            "VariantName": "AllTraffic",
+            "ModelName.$": "$.ExtractedModel.ModelName",
+            "InitialInstanceCount": 1,
+            "InstanceType": "ml.m5.large",
+            "InitialVariantWeight": 1
+          }
+        ]
+      },
+      "ResultPath": "$.EndpointConfigResult",
+      "Next": "SageMakerUpdateEndpoint"
+    },
+    "SageMakerUpdateEndpoint": {
+      "Type": "Task",
+      "Resource": "arn:aws:states:::sagemaker:updateEndpoint",
+      "Parameters": {
+        "EndpointName": "${endpoint_name}",
+        "EndpointConfigName.$": "States.ArrayGetItem(States.StringSplit($.EndpointConfigResult.EndpointConfigArn, '/'), 1)"
+      },
+      "End": true
     }
   }
 }

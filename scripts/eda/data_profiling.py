@@ -5,18 +5,14 @@ import json
 import os
 import boto3
 
-ENDPOINT = os.getenv('LOCALSTACK_ENDPOINT', 'http://localhost:4566')
-BUCKET = os.getenv('S3_BUCKET', 'proyecto-ml-datalake')
+BUCKET = os.getenv('S3_BUCKET', 'proyecto-ml-datalake-lalo-ug-2026') # <--- Tu nuevo nombre único
 
 SCRIPT_DIR = os.path.dirname(os.path.abspath(__file__))
 PROJECT_ROOT = os.path.dirname(os.path.dirname(SCRIPT_DIR))
 DATASET_PATH = os.path.join(PROJECT_ROOT, 'datasets', 'creditcard.csv')
 
-
-
-s3 = boto3.client('s3', endpoint_url=ENDPOINT, 
-                  aws_access_key_id='test', 
-                  aws_secret_access_key='test')
+# Cliente limpio para la nube real
+s3 = boto3.client('s3')
 
 def load_data():
     """Cargar dataset desde datasets/"""

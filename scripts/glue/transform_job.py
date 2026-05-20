@@ -15,7 +15,7 @@ spark = glueContext.spark_session
 job = Job(glueContext)
 job.init(args['JOB_NAME'], args)
 
-BUCKET = "proyecto-ml-datalake"
+BUCKET = "proyecto-ml-datalake-lalo-ug-2026" # <--- Tu nuevo nombre único
 
 print("="*60)
 print(" INICIANDO GLUE JOB: BRONZE → SILVER")

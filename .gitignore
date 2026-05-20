@@ -1,22 +1,36 @@
-# Terraform
+# --- Seguridad: Credenciales ---
+.aws/
+.env
+*.pem
+*.key
+
+# --- Terraform ---
 **/.terraform/*
 *.tfstate
 *.tfstate.backup
 .terraform.lock.hcl
 
-# Volumes/cache
-volume/
-
-# Datasets
+# --- Datasets y Datos temporales ---
 datasets/
 *.csv
+*.parquet
+*.pth
+*.bin
 
-# Binarios
+# --- Scripts y artefactos de construcción ---
+# Si decides mantener estos archivos en el repo, quítalos de aquí, 
+# pero si quieres que Git ignore los binarios generados:
 *.tar.gz
 *.zip
 
-# Python
-env/
-venv/
+# --- IDE y Sistema ---
+.vscode/
+.DS_Store
 __pycache__/
 *.pyc
+
+# --- Archivos que mencionaste no necesitar ---
+docker-compose.yml
+setup.sh
+# Si ya no necesitas estos archivos en el proyecto, bórralos de tu disco
+# y añade sus nombres aquí si decides conservarlos pero ignorar cambios.

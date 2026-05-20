@@ -4,12 +4,12 @@ from io import StringIO
 from datetime import datetime
 import os
 
-ENDPOINT_URL = os.getenv('LOCALSTACK_ENDPOINT', 'http://localhost:4566')
-BUCKET = os.getenv('S3_BUCKET', 'proyecto-ml-datalake')
+BUCKET = os.getenv('S3_BUCKET', 'proyecto-ml-datalake-lalo-ug-2026') # <--- Tu nuevo nombre único
 
-s3 = boto3.client('s3', endpoint_url=ENDPOINT_URL,
-                  aws_access_key_id='test',
-                  aws_secret_access_key='test')
+# Al no pasarle parámetros, boto3 usa mágicamente tus credenciales reales y la nube oficial
+s3 = boto3.client('s3')
+
+SCRIPT_DIR = os.path.dirname(os.path.abspath(__file__))
 
 SCRIPT_DIR = os.path.dirname(os.path.abspath(__file__))  
 PROJECT_ROOT = os.path.dirname(os.path.dirname(SCRIPT_DIR))  
