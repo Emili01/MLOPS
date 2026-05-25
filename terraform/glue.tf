@@ -38,8 +38,10 @@ resource "aws_glue_job" "preprocessing_job" {
   }
 
   default_arguments = {
-    "--job-language" = "python"
-    "--TempDir"      = "s3://${aws_s3_bucket.datalake.id}/temp/"
+    "--job-language"                     = "python"
+    "--TempDir"                          = "s3://${aws_s3_bucket.datalake.id}/temp/"
+    "--enable-metrics"                   = "true"
+    "--enable-continuous-cloudwatch-log" = "true"
   }
 
   glue_version      = "3.0"

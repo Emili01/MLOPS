@@ -33,4 +33,4 @@ __pycache__/
 docker-compose.yml
 setup.sh
 # Si ya no necesitas estos archivos en el proyecto, bórralos de tu disco
-# y añade sus nombres aquí si decides conservarlos pero ignorar cambios.
+# y añade sus nombres aquí si decides conservarlos pero ignorar cambios.venv/

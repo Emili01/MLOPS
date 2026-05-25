@@ -1,18 +1,15 @@
-# Zip para la Lambda de inferencia (handler.py + train_trigger.py)
 data "archive_file" "lambda_zip" {
   type        = "zip"
   source_dir  = "${path.module}/../scripts/lambda"
   output_path = "${path.module}/lambda_function.zip"
 }
 
-# Zip para la Lambda de reempaquetado (solo repackage_model.py)
 data "archive_file" "repackage_zip" {
   type        = "zip"
   source_file = "${path.module}/../scripts/lambda/repackage_model.py"
   output_path = "${path.module}/repackage_lambda.zip"
 }
 
-# Lambda de inferencia (disparada por S3)
 resource "aws_lambda_function" "fraud_trigger" {
   filename         = data.archive_file.lambda_zip.output_path
   source_code_hash = data.archive_file.lambda_zip.output_base64sha256
@@ -20,7 +17,12 @@ resource "aws_lambda_function" "fraud_trigger" {
   role             = aws_iam_role.lambda_role.arn
   handler          = "handler.lambda_handler"
   runtime          = "python3.10"
-  timeout          = 30
+  timeout          = 60
+  memory_size      = 512
+
+  layers = [
+    "arn:aws:lambda:us-east-1:336392948345:layer:AWSSDKPandas-Python310:34"
+  ]
 
   dead_letter_config {
     target_arn = aws_sqs_queue.lambda_dlq.arn
@@ -42,12 +44,11 @@ resource "aws_lambda_permission" "allow_s3" {
   source_arn    = aws_s3_bucket.datalake.arn
 }
 
-# Lambda de reempaquetado (invocada por Step Functions)
 resource "aws_lambda_function" "repackage_model" {
   filename         = data.archive_file.repackage_zip.output_path
   source_code_hash = data.archive_file.repackage_zip.output_base64sha256
   function_name    = "${var.project_name}-repackage-model"
-  role             = aws_iam_role.lambda_role.arn
+  role             = aws_iam_role.lambda_repackage_role.arn
   handler          = "repackage_model.lambda_handler"
   runtime          = "python3.10"
   timeout          = 300
